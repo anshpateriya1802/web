@@ -81,10 +81,11 @@ export default function ClientRoomLayout({ roomId, userId, userName }: ClientRoo
   const Separator = ({ onMouseDown }: { onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void }) => (
     <div
       onMouseDown={onMouseDown}
-      className="flex-none w-[6px] bg-[#0d0d0d] border-x border-gray-800 flex items-center justify-center cursor-col-resize hover:bg-indigo-900/60 active:bg-indigo-700/70 transition-colors z-50 select-none"
+      style={{ background: 'var(--cr-bg-elevated)', borderColor: 'var(--cr-border)' }}
+      className="flex-none w-[6px] border-x flex items-center justify-center cursor-col-resize hover:bg-indigo-900/60 active:bg-indigo-700/70 transition-colors z-50 select-none"
       style={{ touchAction: 'none' }}
     >
-      <div className="h-12 w-[3px] bg-gray-600 rounded-full pointer-events-none" />
+      <div style={{ background: 'var(--cr-border-light)' }} className="h-12 w-[3px] rounded-full pointer-events-none" />
     </div>
   )
 
@@ -94,7 +95,8 @@ export default function ClientRoomLayout({ roomId, userId, userName }: ClientRoo
   return (
     <div
       ref={containerRef}
-      className="flex flex-row w-full h-full overflow-hidden bg-[#0a0a0a]"
+      style={{ background: 'var(--cr-bg-base)' }}
+      className="flex flex-row w-full h-full overflow-hidden"
     >
       {/* ── Problem Panel (left) ── */}
       {isProblemOpen && (

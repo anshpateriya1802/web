@@ -62,25 +62,33 @@ export default function ProblemPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full bg-white text-black overflow-hidden relative">
-      <div className="flex justify-between items-center bg-[#f8f9fa] px-4 py-2 border-b border-gray-200 shrink-0">
+    <div
+      style={{ background: 'var(--cr-bg-surface)', color: 'var(--cr-text-primary)' }}
+      className="flex flex-col h-full w-full overflow-hidden relative"
+    >
+      <div
+        style={{ background: 'var(--cr-bg-elevated)', borderColor: 'var(--cr-border)' }}
+        className="flex justify-between items-center px-4 py-2 border-b shrink-0"
+      >
         <div className="flex items-center space-x-2 text-green-600 font-semibold">
           <FileText size={16} />
-          <span className="text-sm">Problem Details</span>
+          <span style={{ color: 'var(--cr-text-primary)' }} className="text-sm">Problem Details</span>
         </div>
         <div className="flex items-center space-x-2">
           {!isEditing && (
-            <button 
+            <button
               onClick={() => setIsEditing(true)}
-              className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-200 rounded transition-colors"
+              style={{ color: 'var(--cr-text-muted)' }}
+              className="p-1.5 hover:text-indigo-500 hover:bg-gray-200/20 rounded transition-colors"
               title="Edit Problem"
             >
               <Edit2 size={14} />
             </button>
           )}
-          <button 
+          <button
             onClick={toggleProblem}
-            className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-200 rounded transition-colors"
+            style={{ color: 'var(--cr-text-muted)' }}
+            className="px-2 py-1 text-xs hover:bg-gray-200/20 rounded transition-colors"
           >
             Close
           </button>
@@ -92,21 +100,22 @@ export default function ProblemPanel() {
           <div className="space-y-6">
             {/* Fetch Section */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Fetch from URL</label>
+              <label style={{ color: 'var(--cr-text-muted)' }} className="text-xs font-semibold uppercase tracking-wider">Fetch from URL</label>
               <form onSubmit={handleFetch} className="flex space-x-2">
                 <div className="relative flex-1">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <div style={{ color: 'var(--cr-text-muted)' }} className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <LinkIcon size={14} />
                   </div>
-                  <input 
+                  <input
                     type="url"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://leetcode.com/problems/..."
-                    className="w-full bg-white border border-gray-300 rounded-md pl-9 pr-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    style={{ background: 'var(--cr-bg-input)', color: 'var(--cr-text-primary)', borderColor: 'var(--cr-border)' }}
+                    className="w-full border rounded-md pl-9 pr-3 py-2 text-xs placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
-                <button 
+                <button
                   type="submit"
                   disabled={isFetching || !url}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-3 py-2 rounded-md text-xs font-bold transition-colors flex items-center space-x-1"
@@ -123,35 +132,38 @@ export default function ProblemPanel() {
             {/* Edit Section */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Title</label>
-                <input 
+                <label style={{ color: 'var(--cr-text-muted)' }} className="text-xs font-semibold uppercase tracking-wider">Title</label>
+                <input
                   type="text"
                   value={localTitle}
                   onChange={(e) => setLocalTitle(e.target.value)}
                   placeholder="Problem Title"
-                  className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 font-semibold focus:border-indigo-500 focus:outline-none"
+                  style={{ background: 'var(--cr-bg-input)', color: 'var(--cr-text-primary)', borderColor: 'var(--cr-border)' }}
+                  className="w-full border rounded-md px-3 py-2 text-sm font-semibold focus:border-indigo-500 focus:outline-none"
                 />
               </div>
 
               <div className="space-y-2 flex-1 flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</label>
-                <textarea 
+                <label style={{ color: 'var(--cr-text-muted)' }} className="text-xs font-semibold uppercase tracking-wider">Description</label>
+                <textarea
                   value={localDesc}
                   onChange={(e) => setLocalDesc(e.target.value)}
                   rows={8}
                   placeholder="Paste the problem description here..."
-                  className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none resize-y"
+                  style={{ background: 'var(--cr-bg-input)', color: 'var(--cr-text-primary)', borderColor: 'var(--cr-border)' }}
+                  className="w-full border rounded-md px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none resize-y"
                 />
               </div>
 
               <div className="space-y-2 flex-1 flex flex-col">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Test Cases</label>
-                <textarea 
+                <label style={{ color: 'var(--cr-text-muted)' }} className="text-xs font-semibold uppercase tracking-wider">Test Cases</label>
+                <textarea
                   value={localTests}
                   onChange={(e) => setLocalTests(e.target.value)}
                   rows={4}
                   placeholder="Input:\nOutput:"
-                  className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm font-mono text-gray-600 focus:border-indigo-500 focus:outline-none resize-y"
+                  style={{ background: 'var(--cr-bg-input)', color: 'var(--cr-text-secondary)', borderColor: 'var(--cr-border)' }}
+                  className="w-full border rounded-md px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:outline-none resize-y"
                 />
               </div>
 
@@ -165,15 +177,19 @@ export default function ProblemPanel() {
           </div>
         ) : (
           <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900">{problemTitle || "Untitled Problem"}</h1>
-            <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+            <h1 style={{ color: 'var(--cr-text-primary)' }} className="text-2xl font-bold">
+              {problemTitle || "Untitled Problem"}
+            </h1>
+            <div style={{ color: 'var(--cr-text-secondary)' }} className="prose prose-sm max-w-none whitespace-pre-wrap">
               {problemDesc || "No description provided."}
             </div>
-            
             {(problemTests || "").trim() && (
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h3 className="text-sm font-bold text-gray-800 mb-2">Test Cases</h3>
-                <pre className="text-xs font-mono text-gray-600 whitespace-pre-wrap overflow-x-auto">
+              <div
+                style={{ background: 'var(--cr-bg-elevated)', borderColor: 'var(--cr-border)' }}
+                className="rounded-lg p-4 border"
+              >
+                <h3 style={{ color: 'var(--cr-text-primary)' }} className="text-sm font-bold mb-2">Test Cases</h3>
+                <pre style={{ color: 'var(--cr-text-secondary)' }} className="text-xs font-mono whitespace-pre-wrap overflow-x-auto">
                   {problemTests}
                 </pre>
               </div>

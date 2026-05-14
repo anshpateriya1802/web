@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from 'react'
+import { useRoomStore } from '@/stores/roomStore'
 
 interface Point {
   x: number;
@@ -13,6 +14,7 @@ interface Path {
 }
 
 export default function LaserPointer() {
+  const theme = useRoomStore((s) => s.theme)
   const [paths, setPaths] = useState<Path[]>([])
   const isDrawing = useRef(false)
   const currentPathId = useRef<number>(0)
@@ -43,11 +45,11 @@ export default function LaserPointer() {
     const handlePointerMove = (e: PointerEvent) => {
       if (e.altKey && e.buttons > 0) {
         cancelClearTimer()
-        
+
         if (!isDrawing.current) {
-           isDrawing.current = true
-           currentPathId.current = Date.now()
-           setPaths(prev => [...prev, { id: currentPathId.current, points: [{ x: e.clientX, y: e.clientY }] }])
+          isDrawing.current = true
+          currentPathId.current = Date.now()
+          setPaths(prev => [...prev, { id: currentPathId.current, points: [{ x: e.clientX, y: e.clientY }] }])
         }
 
         setPaths(prev => {
@@ -85,41 +87,49 @@ export default function LaserPointer() {
 
   if (paths.length === 0) return null
 
+  // In dark mode: "lighten" blend makes the laser bright on dark BG.
+  // In light mode: "multiply" + a dark neon colour keeps it visible on white.
+  const isLight = theme === 'light'
+  const blendMode: React.CSSProperties['mixBlendMode'] = isLight ? 'multiply' : 'lighten'
+  const outerColor  = isLight ? '#cc0000' : '#ff0000'   // deeper red on light
+  const coreColor   = isLight ? '#550000' : '#ffffff'   // dark core in light mode
+
   return (
-    <svg 
-      className="pointer-events-none fixed inset-0 z-[100000]" 
-      style={{ width: '100vw', height: '100vh', mixBlendMode: 'lighten' }}
+    <svg
+      className="pointer-events-none fixed inset-0 z-[100000]"
+      style={{ width: '100vw', height: '100vh', mixBlendMode: blendMode }}
     >
       <defs>
         <filter id="laser-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feGaussianBlur stdDeviation={isLight ? 1.5 : 2} result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
       </defs>
+
       {paths.map((path) => {
-        if (path.points.length < 2) return null;
-        const pointsStr = path.points.map(p => `${p.x},${p.y}`).join(' ');
+        if (path.points.length < 2) return null
+        const pointsStr = path.points.map(p => `${p.x},${p.y}`).join(' ')
         return (
           <g key={path.id} filter="url(#laser-glow)">
-            {/* Outer red glow (thin) */}
+            {/* Outer glow stroke */}
             <polyline
               points={pointsStr}
               fill="none"
-              stroke="#ff0000"
-              strokeWidth="4"
+              stroke={outerColor}
+              strokeWidth={isLight ? 5 : 4}
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeOpacity="0.8"
+              strokeOpacity={isLight ? 0.9 : 0.8}
             />
-            {/* Inner core - bright red/white, very thin */}
+            {/* Bright inner core */}
             <polyline
               points={pointsStr}
               fill="none"
-              stroke="#ffffff"
-              strokeWidth="1.5"
+              stroke={coreColor}
+              strokeWidth={isLight ? 2 : 1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
