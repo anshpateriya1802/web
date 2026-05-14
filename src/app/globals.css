@@ -1,26 +1,64 @@
 @import "tailwindcss";
 
+/* ── Design tokens ────────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Dark mode (default) */
+  --cr-bg-base:      #0a0a0a;
+  --cr-bg-surface:   #111111;
+  --cr-bg-elevated:  #1a1a2e;
+  --cr-bg-input:     #0f0f1a;
+
+  --cr-border:       #1f1f35;
+  --cr-border-light: #2a2a4e;
+
+  --cr-text-primary:   #e0e0e0;
+  --cr-text-secondary: #a0a0b0;
+  --cr-text-muted:     #555566;
+
+  --cr-accent:         #4E79A7;
+  --cr-accent-hover:   #5e89b7;
+
+  --cr-editor-bg:    #1e1e1e;
+  --cr-terminal-bg:  #0a0a0a;
+}
+
+/* Light mode — set on <html class="light"> */
+html.light {
+  --cr-bg-base:      #f0f2f5;
+  --cr-bg-surface:   #ffffff;
+  --cr-bg-elevated:  #e8eaf0;
+  --cr-bg-input:     #f8f9fa;
+
+  --cr-border:       #d0d4de;
+  --cr-border-light: #c0c5d0;
+
+  --cr-text-primary:   #1a1a2a;
+  --cr-text-secondary: #444455;
+  --cr-text-muted:     #8888a0;
+
+  --cr-accent:         #4E79A7;
+  --cr-accent-hover:   #3d6090;
+
+  --cr-editor-bg:    #1e1e1e;   /* Monaco stays dark always */
+  --cr-terminal-bg:  #0d0d0d;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--cr-bg-base);
+  --color-foreground: var(--cr-text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--cr-bg-base);
+  color: var(--cr-text-primary);
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Smooth theme transition on all key surfaces */
+aside, main, header, section, nav,
+[data-theme-surface] {
+  transition: background-color 0.25s ease, border-color 0.2s ease, color 0.2s ease;
 }
