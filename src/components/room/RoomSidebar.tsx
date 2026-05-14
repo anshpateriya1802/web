@@ -2,7 +2,7 @@
 
 import { useRoomStore } from '@/stores/roomStore'
 import { useState } from 'react'
-import { Copy, Check, PenTool, ArrowLeft, FileText } from 'lucide-react'
+import { Copy, Check, PenTool, ArrowLeft, FileText, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import ClientVoiceChannel from './ClientVoiceChannel'
 
@@ -17,6 +17,7 @@ export default function RoomSidebar({ roomId, currentUserId, currentUserEmail }:
     participants, activeOverlayUserId, setOverlayUser,
     isWhiteboardOpen, toggleWhiteboard,
     isProblemOpen, toggleProblem,
+    isAIPanelOpen, toggleAIPanel,
   } = useRoomStore()
 
   const [copied, setCopied] = useState(false)
@@ -29,7 +30,7 @@ export default function RoomSidebar({ roomId, currentUserId, currentUserEmail }:
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // ── Collapsed sidebar (when problem panel is open) ──
+  // ── Collapsed sidebar (problem panel open) ──
   if (isProblemOpen) {
     return (
       <aside className="w-14 border-r border-gray-800 bg-[#111111] flex flex-col items-center py-4 space-y-6 shrink-0">
@@ -37,18 +38,19 @@ export default function RoomSidebar({ roomId, currentUserId, currentUserEmail }:
           <ArrowLeft size={18} />
         </Link>
         <div className="w-8 h-px bg-gray-800" />
-        <button
-          onClick={toggleProblem}
+        <button onClick={toggleProblem}
           className="p-2 bg-indigo-600/20 text-indigo-400 rounded-md hover:bg-indigo-600/40 transition-colors"
-          title="Close Problem Panel"
-        >
+          title="Close Problem Panel">
           <FileText size={18} />
         </button>
-        <button
-          onClick={toggleWhiteboard}
+        <button onClick={toggleAIPanel}
+          className={`p-2 rounded-md transition-colors ${isAIPanelOpen ? 'bg-purple-600/20 text-purple-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+          title="Toggle AI Assistant">
+          <Sparkles size={18} />
+        </button>
+        <button onClick={toggleWhiteboard}
           className={`p-2 rounded-md transition-colors ${isWhiteboardOpen ? 'bg-blue-600/20 text-blue-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-          title="Toggle Whiteboard"
-        >
+          title="Toggle Whiteboard">
           <PenTool size={18} />
         </button>
       </aside>
@@ -57,82 +59,78 @@ export default function RoomSidebar({ roomId, currentUserId, currentUserEmail }:
 
   // ── Full sidebar ──
   return (
-    <aside className="w-64 border-r border-gray-800 bg-[#111111] flex flex-col shrink-0">
-      <div className="p-4 border-b border-gray-800 flex items-center space-x-2">
-        <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-          <ArrowLeft size={18} />
+    <aside className="w-56 border-r border-gray-800 bg-[#111111] flex flex-col shrink-0">
+
+      {/* Header */}
+      <div className="px-3 py-3 border-b border-gray-800 flex items-center gap-2">
+        <Link href="/" className="text-gray-400 hover:text-white transition-colors shrink-0" title="Back">
+          <ArrowLeft size={16} />
         </Link>
-        <h2 className="font-bold truncate text-white" title={roomId}>Room: {roomId.slice(0, 8)}</h2>
-      </div>
-
-      <div className="p-4 border-b border-gray-800">
-        <button
-          onClick={handleCopyLink}
-          className="w-full py-2 px-3 bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 rounded-md transition-colors flex items-center justify-center space-x-2"
-        >
-          {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-          <span>{copied ? "Copied!" : "Copy Invite Link"}</span>
+        <span className="text-sm font-semibold text-white truncate flex-1">{roomId.slice(0, 8)}</span>
+        <button onClick={handleCopyLink}
+          className="p-1 text-gray-600 hover:text-gray-300 rounded transition-colors shrink-0"
+          title="Copy invite link">
+          {copied ? <Check size={13} className="text-green-500" /> : <Copy size={13} />}
         </button>
       </div>
 
-      <div className="p-4 border-b border-gray-800 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Workspace Tools</h3>
-        <button
-          onClick={toggleProblem}
-          className={`w-full py-2 px-3 text-xs rounded-md transition-colors flex items-center justify-center space-x-2 ${
-            isProblemOpen ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-          }`}
-        >
-          <FileText size={14} />
-          <span>{isProblemOpen ? "Hide Problem" : "Open Problem"}</span>
+      {/* Workspace tools */}
+      <div className="px-3 py-3 border-b border-gray-800 space-y-1.5">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 mb-2">Tools</p>
+        <button onClick={toggleProblem}
+          className={`w-full py-1.5 px-2.5 text-xs rounded-md transition-colors flex items-center gap-2 ${
+            isProblemOpen ? 'bg-indigo-600/20 text-indigo-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`}>
+          <FileText size={13} />
+          <span>{isProblemOpen ? 'Hide Problem' : 'Problem Panel'}</span>
         </button>
-        <button
-          onClick={toggleWhiteboard}
-          className={`w-full py-2 px-3 text-xs rounded-md transition-colors flex items-center justify-center space-x-2 ${
-            isWhiteboardOpen ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-          }`}
-        >
-          <PenTool size={14} />
-          <span>{isWhiteboardOpen ? "Hide Whiteboard" : "Open Whiteboard"}</span>
+        <button onClick={toggleAIPanel}
+          className={`w-full py-1.5 px-2.5 text-xs rounded-md transition-colors flex items-center gap-2 ${
+            isAIPanelOpen ? 'bg-purple-600/20 text-purple-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`}>
+          <Sparkles size={13} />
+          <span>{isAIPanelOpen ? 'Hide AI Assistant' : 'AI Assistant'}</span>
+        </button>
+        <button onClick={toggleWhiteboard}
+          className={`w-full py-1.5 px-2.5 text-xs rounded-md transition-colors flex items-center gap-2 ${
+            isWhiteboardOpen ? 'bg-blue-600/20 text-blue-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          }`}>
+          <PenTool size={13} />
+          <span>{isWhiteboardOpen ? 'Hide Whiteboard' : 'Whiteboard'}</span>
         </button>
       </div>
 
-      <div className="p-4 flex-1 overflow-y-auto">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Participants</h3>
-        <ul className="space-y-4">
-          <li className="flex flex-col space-y-2">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-sm font-medium text-white">{currentUserEmail} (You)</span>
-            </div>
+      {/* Participants */}
+      <div className="px-3 py-3 flex-1 overflow-y-auto">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 mb-3">Participants</p>
+        <ul className="space-y-2.5">
+          <li className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+            <span className="text-xs text-white truncate">{currentUserEmail}</span>
+            <span className="text-[10px] text-gray-600 shrink-0">(you)</span>
           </li>
           {otherParticipants.map((p, idx) => (
-            <li key={idx} className="flex flex-col space-y-2 border-t border-gray-800/50 pt-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-400" />
-                  <span className="text-sm text-gray-300">{p.name}</span>
-                </div>
+            <li key={idx} className="space-y-1.5 pt-1.5 border-t border-gray-800/50">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                <span className="text-xs text-gray-300 truncate">{p.name}</span>
               </div>
-              <div className="flex space-x-2 pl-5">
+              <div className="flex gap-1.5 pl-3.5">
                 <button
                   onClick={() => setOverlayUser(p.userId)}
-                  className={`px-2 py-1 text-[10px] uppercase font-bold rounded ${
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded ${
                     activeOverlayUserId === p.userId
                       ? 'bg-indigo-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                   }`}
                 >
-                  {activeOverlayUserId === p.userId ? 'Viewing Ghost' : 'View Ghost'}
+                  {activeOverlayUserId === p.userId ? 'Ghosting' : 'Ghost'}
                 </button>
                 <button
-                  onClick={() => {
-                    const broadcast = useRoomStore.getState().broadcastSyncAction
-                    if (broadcast) broadcast(p.userId)
-                  }}
-                  className="px-2 py-1 text-[10px] uppercase font-bold rounded bg-gray-800 text-green-400 hover:bg-green-900/50 hover:text-green-300"
+                  onClick={() => { const b = useRoomStore.getState().broadcastSyncAction; if (b) b(p.userId) }}
+                  className="px-2 py-0.5 text-[10px] font-bold rounded bg-gray-800 text-green-400 hover:bg-green-900/50"
                 >
-                  Push Code
+                  Push
                 </button>
               </div>
             </li>
@@ -141,18 +139,8 @@ export default function RoomSidebar({ roomId, currentUserId, currentUserEmail }:
       </div>
 
       {/* Voice Channel */}
-      <div className="p-4 border-t border-gray-800">
+      <div className="px-3 py-3 border-t border-gray-800">
         <ClientVoiceChannel roomId={roomId} userId={currentUserId} />
-      </div>
-
-      {/* Request Sync footer */}
-      <div className="p-4 border-t border-gray-800">
-        <button className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-sm font-medium rounded transition-colors shadow-[0_0_15px_-3px_rgba(79,70,229,0.4)]">
-          Request Sync
-        </button>
-        <p className="text-[10px] text-gray-500 text-center mt-2">
-          Pushes your buffer to a collaborator
-        </p>
       </div>
     </aside>
   )

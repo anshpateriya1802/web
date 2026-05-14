@@ -2,10 +2,10 @@
 
 import { motion } from "framer-motion"
 import { createRoomAction, joinRoomAction, deleteRoomAction, updateRoomAction, leaveRoomAction } from "@/app/actions"
-import { Clock, Plus, LogIn, Code, ArrowRight, Trash2, Edit2, LogOut, MoreVertical } from "lucide-react"
+import { Clock, Plus, LogIn, Code, ArrowRight, Trash2, Edit2, LogOut, MoreVertical, GitBranch, ChevronDown, Settings } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 
 interface RoomData {
   id: string;
@@ -23,10 +23,81 @@ interface ParticipantData {
 
 interface DashboardClientProps {
   userEmail: string;
+  userName?:  string;
   rooms: ParticipantData[];
 }
 
-export default function DashboardClient({ userEmail, rooms }: DashboardClientProps) {
+// ── Avatar dropdown ────────────────────────────────────────────────────────────
+function AvatarMenu({ email, name }: { email: string; name?: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const initials = (name || email || '?').slice(0, 2).toUpperCase()
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 border border-gray-700 rounded-full transition-colors"
+      >
+        <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white">
+          {initials}
+        </div>
+        <span className="text-gray-300 text-xs font-medium max-w-[140px] truncate">{email}</span>
+        <ChevronDown size={13} className={`text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-64 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+          {/* User info */}
+          <div className="px-4 py-3 border-b border-gray-800">
+            <p className="text-xs font-semibold text-white">{name || email}</p>
+            <p className="text-[11px] text-gray-500 truncate">{email}</p>
+          </div>
+
+          {/* GitHub Connect */}
+          <a
+            href={`/api/auth/signin/github?callbackUrl=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '/')}`}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800 transition-colors group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gray-800 group-hover:bg-gray-700 flex items-center justify-center transition-colors">
+              <GitBranch size={15} className="text-gray-400 group-hover:text-white" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-200">Connect GitHub</p>
+              <p className="text-[10px] text-gray-500">Import repos into your editor</p>
+            </div>
+          </a>
+
+          <div className="h-px bg-gray-800 mx-3" />
+
+          {/* Sign out */}
+          <form action="/api/auth/signout" method="POST">
+            <button
+              type="submit"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-900/20 transition-colors group text-left"
+            >
+              <div className="w-8 h-8 rounded-lg bg-gray-800 group-hover:bg-red-900/30 flex items-center justify-center transition-colors">
+                <LogOut size={14} className="text-gray-400 group-hover:text-red-400" />
+              </div>
+              <span className="text-xs font-medium text-gray-300 group-hover:text-red-400">Sign Out</span>
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function DashboardClient({ userEmail, userName, rooms }: DashboardClientProps) {
   const router = useRouter()
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
@@ -65,19 +136,8 @@ export default function DashboardClient({ userEmail, rooms }: DashboardClientPro
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">CodeRealm</h1>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="px-3 py-1.5 bg-gray-900 rounded-full border border-gray-800 flex items-center space-x-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-gray-300 text-xs font-medium">{userEmail}</span>
-          </div>
-          <form action="/api/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="rounded-md bg-gray-800 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-700 transition-colors uppercase tracking-wider"
-            >
-              Sign out
-            </button>
-          </form>
+        <div className="flex items-center">
+          <AvatarMenu email={userEmail} name={userName} />
         </div>
       </header>
 

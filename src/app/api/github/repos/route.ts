@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const githubToken = (session.user as any).githubToken
   if (!githubToken) {
     return NextResponse.json(
-      { error: 'No GitHub account linked. Please sign in with GitHub.' },
+      { error: 'GITHUB_NOT_CONNECTED', message: 'No GitHub account linked.' },
       { status: 403 }
     )
   }

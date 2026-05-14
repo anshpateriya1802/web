@@ -6,12 +6,14 @@ import { useRoomStore } from '@/stores/roomStore'
 import ClientWorkspaceEditor from "@/components/editor/ClientWorkspaceEditor"
 import ClientCollaborativeWhiteboard from "@/components/room/ClientCollaborativeWhiteboard"
 import ClientProblemPanel from "@/components/room/ClientProblemPanel"
+import AIChatPanel from "@/components/room/AIChatPanel"
 import { X, GripHorizontal, Maximize2, Minimize2 } from "lucide-react"
 
 interface ClientRoomLayoutProps {
-  roomId: string;
-  userId: string;
-  userName: string;
+  roomId:    string;
+  roomDbId:  string;   // actual DB CUID — passed to FileTree
+  userId:    string;
+  userName:  string;
 }
 
 const MIN_PANEL_PCT       = 18
@@ -207,13 +209,14 @@ function WhiteboardPopup({ roomId, onClose }: PopupProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main layout
 // ─────────────────────────────────────────────────────────────────────────────
-export default function ClientRoomLayout({ roomId, userId, userName }: ClientRoomLayoutProps) {
-  const { isProblemOpen, isWhiteboardOpen, toggleWhiteboard } = useRoomStore()
+export default function ClientRoomLayout({ roomId, roomDbId, userId, userName }: ClientRoomLayoutProps) {
+  const { isProblemOpen, isWhiteboardOpen, toggleWhiteboard, isAIPanelOpen } = useRoomStore()
 
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [problemPct,    setProblemPct]    = useState(0)
   const [whiteboardPct, setWhiteboardPct] = useState(0)
+  const [aiPct,         setAiPct]         = useState(0)
 
   // ── Breakpoint detection via ResizeObserver ────────────────────────────────
   const [containerWidth, setContainerWidth] = useState<number>(9999)
@@ -240,9 +243,13 @@ export default function ClientRoomLayout({ roomId, userId, userName }: ClientRoo
     setWhiteboardPct(isWhiteboardOpen && useSplitView ? DEFAULT_WB_SPLIT : 0)
   }, [isWhiteboardOpen, useSplitView])
 
+  useEffect(() => {
+    setAiPct(isAIPanelOpen ? 25 : 0)
+  }, [isAIPanelOpen])
+
   // ── Drag separator factory ────────────────────────────────────────────────
   const makeDragHandler = useCallback(
-    (side: 'left' | 'right') =>
+    (panel: 'problem' | 'whiteboard' | 'ai') =>
       (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault()
         const container = containerRef.current
@@ -251,17 +258,19 @@ export default function ClientRoomLayout({ roomId, userId, userName }: ClientRoo
         const startX   = e.clientX
         const rect     = container.getBoundingClientRect()
         const totalW   = rect.width
-        const startPct = side === 'left' ? problemPct : whiteboardPct
+        const startPct = panel === 'problem' ? problemPct : panel === 'ai' ? aiPct : whiteboardPct
 
         const onMove = (ev: MouseEvent) => {
           const delta    = ev.clientX - startX
           const deltaPct = (delta / totalW) * 100
-          const next = side === 'left'
+          const next = panel === 'problem'
             ? startPct + deltaPct
             : startPct - deltaPct
           const clamped = Math.min(Math.max(next, MIN_PANEL_PCT), MAX_PANEL_PCT)
-          if (side === 'left') setProblemPct(clamped)
-          else                 setWhiteboardPct(clamped)
+          
+          if (panel === 'problem') setProblemPct(clamped)
+          else if (panel === 'ai') setAiPct(clamped)
+          else                     setWhiteboardPct(clamped)
         }
         const onUp = () => {
           document.removeEventListener('mousemove', onMove)
@@ -274,7 +283,7 @@ export default function ClientRoomLayout({ roomId, userId, userName }: ClientRoo
         document.addEventListener('mousemove', onMove)
         document.addEventListener('mouseup',   onUp)
       },
-    [problemPct, whiteboardPct]
+    [problemPct, whiteboardPct, aiPct]
   )
 
   // ── Separator ────────────────────────────────────────────────────────────
@@ -321,19 +330,19 @@ export default function ClientRoomLayout({ roomId, userId, userName }: ClientRoo
             >
               <ClientProblemPanel />
             </div>
-            <Separator onMouseDown={makeDragHandler('left')} />
+            <Separator onMouseDown={makeDragHandler('problem')} />
           </>
         )}
 
         {/* Editor — always fills remaining space */}
         <div style={{ flex: '1 1 0%', minWidth: 0 }} className="flex flex-col h-full overflow-hidden">
-          <ClientWorkspaceEditor roomId={roomId} userId={userId} userName={userName} />
+          <ClientWorkspaceEditor roomId={roomId} roomDbId={roomDbId} userId={userId} userName={userName} />
         </div>
 
         {/* Whiteboard — split panel (wide screens only) */}
         {isWhiteboardOpen && useSplitView && (
           <>
-            <Separator onMouseDown={makeDragHandler('right')} />
+            <Separator onMouseDown={makeDragHandler('whiteboard')} />
             <div
               style={{ width: `${whiteboardPct}%`, minWidth: `${whiteboardPct}%`, maxWidth: `${whiteboardPct}%` }}
               className="flex flex-col h-full overflow-hidden"
@@ -352,6 +361,19 @@ export default function ClientRoomLayout({ roomId, userId, userName }: ClientRoo
                 </button>
               </div>
               <ClientCollaborativeWhiteboard roomId={roomId} />
+            </div>
+          </>
+        )}
+
+        {/* AI Assistant Panel */}
+        {isAIPanelOpen && (
+          <>
+            <Separator onMouseDown={makeDragHandler('ai')} />
+            <div
+              style={{ width: `${aiPct}%`, minWidth: `${aiPct}%`, maxWidth: `${aiPct}%` }}
+              className="flex flex-col h-full overflow-hidden"
+            >
+              <AIChatPanel />
             </div>
           </>
         )}

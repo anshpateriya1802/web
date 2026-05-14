@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export interface Participant {
   userId: string;
@@ -40,6 +41,10 @@ interface RoomState {
   // Problem Panel State
   isProblemOpen: boolean
   toggleProblem: () => void
+
+  // AI Assistant Panel State
+  isAIPanelOpen: boolean
+  toggleAIPanel: () => void
   problemTitle: string
   problemDesc: string
   problemTests: string
@@ -55,9 +60,10 @@ interface RoomState {
   setActiveFile:(id: string)       => void
   updateTabContent: (id: string, content: string) => void
   markTabSaved: (id: string)       => void
+  closeAllTabs: ()                 => void
 }
 
-export const useRoomStore = create<RoomState>((set, get) => ({
+export const useRoomStore = create<RoomState>()(persist((set, get) => ({
   roomId: null,
   activeOverlayUserId: null,
   stagingBufferCode: null,
@@ -75,6 +81,9 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
   isProblemOpen: false,
   toggleProblem: () => set((state) => ({ isProblemOpen: !state.isProblemOpen })),
+
+  isAIPanelOpen: false,
+  toggleAIPanel: () => set((state) => ({ isAIPanelOpen: !state.isAIPanelOpen })),
   problemTitle: "",
   problemDesc: "",
   problemTests: "",
@@ -117,4 +126,12 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       t.id === id ? { ...t, isDirty: false } : t
     ),
   })),
+
+  closeAllTabs: () => set({ openTabs: [], activeFileId: null }),
+}), {
+  name: 'coderealm-room-storage',
+  partialize: (state) => ({ 
+    openTabs: state.openTabs, 
+    activeFileId: state.activeFileId 
+  }),
 }))

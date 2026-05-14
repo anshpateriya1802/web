@@ -1,11 +1,9 @@
 "use server"
 
 import { auth } from "@/auth"
-import { PrismaClient } from "@prisma/client"
+import { prisma } from '@/lib/prisma'
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
-
-const prisma = new PrismaClient()
 
 // Helper to generate a 6-character random room code
 function generateRoomCode() {

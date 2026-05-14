@@ -7,7 +7,10 @@ import { WebsocketProvider } from 'y-websocket'
 import { MonacoBinding } from 'y-monaco'
 import { useRoomStore } from '@/stores/roomStore'
 import GhostEditor from './GhostEditor'
-import { Play, Terminal, Code2, RotateCcw, Timer, Pause, RefreshCw, GitBranch } from 'lucide-react'
+import { 
+  Play, RotateCcw, Copy, Code2, Terminal, AlertCircle, Loader2, GitBranch,
+  Timer, Pause, RefreshCw, Save 
+} from 'lucide-react'
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels"
 import GitHubImportModal from './GitHubImportModal'
 import FileTree from './FileTree'
@@ -25,15 +28,16 @@ const BOILERPLATES: Record<string, string> = {
 };
 
 interface WorkspaceEditorProps {
-  roomId: string;
-  userId: string;
+  roomId:   string;
+  roomDbId: string;   // DB CUID — passed to FileTree
+  userId:   string;
   userName: string;
 }
 
-export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceEditorProps) {
+export default function WorkspaceEditor({ roomId, roomDbId, userId, userName }: WorkspaceEditorProps) {
   const editorRef = useRef<any>(null)
   const { activeOverlayUserId, stagingBufferCode, setStagingBuffer, setOverlayUser, setParticipants,
-          activeFileId, openTabs, updateTabContent, markTabSaved } = useRoomStore()
+          activeFileId, openTabs, updateTabContent, markTabSaved, closeAllTabs } = useRoomStore()
   const [isReady, setIsReady] = useState(false)
   const [language, setLanguage] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -57,6 +61,52 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
   // Active file tab → sync Monaco content
   const activeTab = openTabs.find(t => t.id === activeFileId) ?? null
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  const [isSaving, setIsSaving] = useState(false)
+
+  const saveCurrentFile = async () => {
+    if (!editorRef.current || !activeTab) return
+    const value = editorRef.current.getValue()
+    setIsSaving(true)
+    try {
+      await fetch('/api/files', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id: activeTab.id, content: value }),
+      })
+      markTabSaved(activeTab.id)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Save: Ctrl + S (Strictly Ctrl, no Cmd/Meta to avoid system conflicts)
+      if (e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        saveCurrentFile()
+      }
+      
+      // Close All Tabs: Ctrl + Q
+      if (e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'q') {
+        e.preventDefault()
+        closeAllTabs()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [activeTab, closeAllTabs])
+
+  // Autosave every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      saveCurrentFile()
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [activeTab])
+
 
   // When active tab changes, load its content into Monaco
   useEffect(() => {
@@ -120,6 +170,19 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
     )
 
     const type = ydoc.current.getText('monaco')
+
+    const store = useRoomStore.getState()
+    const localContent = store.openTabs.find(t => t.id === store.activeFileId)?.content
+
+    // To prevent race conditions with Yjs and Fastify room GC, we wait for websocket to connect.
+    // If the server says the document is empty (because it was GC'd when we refreshed), we push our local state.
+    provider.current.on('sync', (isSynced: boolean) => {
+      if (isSynced && type.length === 0) {
+        if (localContent) {
+          type.insert(0, localContent)
+        }
+      }
+    })
 
     // Bind Monaco editor to Yjs document
     binding.current = new MonacoBinding(
@@ -324,6 +387,18 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={saveCurrentFile}
+            disabled={isSaving || !activeTab}
+            className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm shrink-0 ${
+              isSaving ? "bg-gray-700 text-gray-500 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500 text-white"
+            }`}
+          >
+            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
+          </button>
           
           <button
             type="button"
@@ -345,7 +420,7 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
       <div className="flex-1 flex overflow-hidden">
         {/* File Tree Sidebar */}
         <div className="shrink-0 border-r border-gray-800 overflow-hidden" style={{ width: 160 }}>
-          <FileTree roomId={roomId} />
+          <FileTree roomId={roomDbId} />
         </div>
 
         {/* Main Private Editor and Output */}
@@ -354,20 +429,36 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
         >
           <PanelGroup orientation="vertical">
             <Panel defaultSize={70} minSize={30} className="relative min-h-0 flex flex-col">
-              <Editor
-                height="100%"
-                path={activeTab
+              <div 
+                className="h-full w-full" 
+                onMouseDownCapture={(e) => {
+                  if (e.altKey) {
+                    e.stopPropagation()
+                  }
+                }}
+              >
+                <Editor
+                  height="100%"
+                  path={activeTab
                   ? `file://${activeTab.id}`
                   : `file.${language === 'typescript' ? 'ts' : language === 'javascript' ? 'js' : language}`
                 }
                 language={activeTab ? activeTab.language : language}
                 theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  wordWrap: "on",
-                  padding: { top: 16 }
-                }}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    wordWrap: 'on',
+                    padding: { top: 16 },
+                    scrollBeyondLastLine: false,
+                    multiCursorModifier: 'ctrlCmd',
+                    fontFamily: "'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace",
+                    fontLigatures: true,
+                    smoothScrolling: true,
+                    cursorBlinking: 'smooth',
+                    cursorSmoothCaretAnimation: 'on',
+                    formatOnPaste: true,
+                  }}
                 onMount={handleEditorMount}
                 onChange={(value) => {
                   if (!activeTab || value === undefined) return
@@ -384,6 +475,7 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
                   }, 1500)
                 }}
               />
+              </div>
             </Panel>
             
             <PanelResizeHandle className="h-2 bg-[#0a0a0a] border-y border-gray-800 flex items-center justify-center cursor-row-resize hover:bg-indigo-900/50 transition-colors z-50">
