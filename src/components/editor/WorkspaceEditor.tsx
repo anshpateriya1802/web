@@ -7,8 +7,11 @@ import { WebsocketProvider } from 'y-websocket'
 import { MonacoBinding } from 'y-monaco'
 import { useRoomStore } from '@/stores/roomStore'
 import GhostEditor from './GhostEditor'
-import { Play, Terminal, Code2, RotateCcw, Timer, Pause, RefreshCw } from 'lucide-react'
+import { Play, Terminal, Code2, RotateCcw, Timer, Pause, RefreshCw, GitBranch } from 'lucide-react'
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels"
+import GitHubImportModal from './GitHubImportModal'
+import FileTree from './FileTree'
+import FileTabs from './FileTabs'
 
 const BOILERPLATES: Record<string, string> = {
   typescript: `function solve() {\n  // Write your code here\n  console.log("Hello World");\n}\n\nsolve();`,
@@ -29,7 +32,8 @@ interface WorkspaceEditorProps {
 
 export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceEditorProps) {
   const editorRef = useRef<any>(null)
-  const { activeOverlayUserId, stagingBufferCode, setStagingBuffer, setOverlayUser, setParticipants } = useRoomStore()
+  const { activeOverlayUserId, stagingBufferCode, setStagingBuffer, setOverlayUser, setParticipants,
+          activeFileId, openTabs, updateTabContent, markTabSaved } = useRoomStore()
   const [isReady, setIsReady] = useState(false)
   const [language, setLanguage] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -46,6 +50,22 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
   // Execution state
   const [output, setOutput] = useState<string | null>(null)
   const [isExecuting, setIsExecuting] = useState(false)
+
+  // GitHub import modal
+  const [showGitHub, setShowGitHub] = useState(false)
+
+  // Active file tab → sync Monaco content
+  const activeTab = openTabs.find(t => t.id === activeFileId) ?? null
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // When active tab changes, load its content into Monaco
+  useEffect(() => {
+    if (!editorRef.current || !activeTab) return
+    const currentValue = editorRef.current.getValue()
+    if (currentValue !== activeTab.content) {
+      editorRef.current.setValue(activeTab.content)
+    }
+  }, [activeFileId])
 
   // Timer state — idle | running | paused
   const [timerStatus, setTimerStatus] = useState<'idle' | 'running' | 'paused'>('idle')
@@ -222,7 +242,7 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
     }
   }
 
-  return (
+  return (<>
     <div className="flex flex-col h-full w-full bg-[#1e1e1e]">
       {/* Editor Header Bar */}
       <div className="bg-[#111111] border-b border-gray-800 flex items-center px-2 sm:px-4 py-2 justify-between shrink-0 overflow-x-auto gap-2">
@@ -230,7 +250,7 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
           Your Buffer
         </div>
         <div className="flex items-center space-x-2 shrink-0">
-          <select 
+          <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             className="bg-gray-900 border border-gray-700 text-gray-300 text-xs rounded-md px-1.5 sm:px-2 py-1.5 outline-none focus:border-indigo-500 transition-colors w-20 sm:w-auto"
@@ -252,6 +272,16 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
             title="Insert Boilerplate"
           >
             <Code2 size={14} />
+          </button>
+
+          {/* GitHub Import */}
+          <button
+            type="button"
+            onClick={() => setShowGitHub(true)}
+            className="flex items-center space-x-1 px-1.5 sm:px-2 py-1.5 rounded-md text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            title="Import from GitHub"
+          >
+            <GitBranch size={14} />
           </button>
           
           <button
@@ -309,15 +339,28 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
         </div>
       </div>
 
+      {/* FileTabs */}
+      <FileTabs />
+
       <div className="flex-1 flex overflow-hidden">
+        {/* File Tree Sidebar */}
+        <div className="shrink-0 border-r border-gray-800 overflow-hidden" style={{ width: 160 }}>
+          <FileTree roomId={roomId} />
+        </div>
+
         {/* Main Private Editor and Output */}
-        <div className={`flex-1 flex flex-col relative ${stagingBufferCode ? 'hidden' : 'flex'}`}>
+        <div className={`flex flex-col relative overflow-hidden ${stagingBufferCode ? 'hidden' : 'flex'}`}
+          style={{ flex: 1, minWidth: 0 }}
+        >
           <PanelGroup orientation="vertical">
             <Panel defaultSize={70} minSize={30} className="relative min-h-0 flex flex-col">
               <Editor
                 height="100%"
-                language={language}
-                path={`file.${language === 'typescript' ? 'ts' : language === 'javascript' ? 'js' : language}`}
+                path={activeTab
+                  ? `file://${activeTab.id}`
+                  : `file.${language === 'typescript' ? 'ts' : language === 'javascript' ? 'js' : language}`
+                }
+                language={activeTab ? activeTab.language : language}
                 theme="vs-dark"
                 options={{
                   minimap: { enabled: false },
@@ -326,6 +369,20 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
                   padding: { top: 16 }
                 }}
                 onMount={handleEditorMount}
+                onChange={(value) => {
+                  if (!activeTab || value === undefined) return
+                  updateTabContent(activeTab.id, value)
+                  // Debounced auto-save to DB
+                  if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+                  saveTimerRef.current = setTimeout(async () => {
+                    await fetch('/api/files', {
+                      method:  'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body:    JSON.stringify({ id: activeTab.id, content: value }),
+                    })
+                    markTabSaved(activeTab.id)
+                  }, 1500)
+                }}
               />
             </Panel>
             
@@ -333,7 +390,7 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
               <div className="w-8 h-1 bg-gray-600 rounded-full" />
             </PanelResizeHandle>
 
-            {/* Terminal Output Panel - Always Open */}
+            {/* Terminal Output Panel */}
             <Panel defaultSize={30} minSize={10} className="bg-[#0a0a0a] flex flex-col relative z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
               <div className="flex items-center justify-between px-4 py-2 bg-[#111111] border-b border-gray-800 shrink-0">
                 <div className="flex items-center space-x-2 text-xs font-semibold text-gray-400">
@@ -406,5 +463,16 @@ export default function WorkspaceEditor({ roomId, userId, userName }: WorkspaceE
       )}
       </div>
     </div>
-  )
+
+    {/* GitHub Import Modal */}
+    {showGitHub && (
+      <GitHubImportModal
+        onClose={() => setShowGitHub(false)}
+        onImport={(code, language, _filename) => {
+          editorRef.current?.setValue(code)
+          setLanguage(language)
+        }}
+      />
+    )}
+  </>)
 }

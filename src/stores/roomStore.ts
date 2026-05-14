@@ -6,7 +6,18 @@ export interface Participant {
   color?: string;
 }
 
-export type Theme = 'dark' | 'light'
+// V2: File tree
+export interface RoomFile {
+  id:       string;
+  name:     string;
+  language: string;
+  updatedAt: string;
+}
+
+export interface OpenFile extends RoomFile {
+  content:  string;
+  isDirty:  boolean;  // unsaved changes
+}
 
 interface RoomState {
   roomId: string | null
@@ -17,16 +28,16 @@ interface RoomState {
   setOverlayUser: (userId: string | null) => void
   setStagingBuffer: (code: string | null) => void
   setParticipants: (participants: Participant[]) => void
-  
+
   // Callback registered by WorkspaceEditor to broadcast a sync request via Yjs Awareness
   broadcastSyncAction: ((targetUserId: string) => void) | null
   setBroadcastSyncAction: (fn: (targetUserId: string) => void) => void
 
-  // V2: Whiteboard State
+  // Whiteboard State
   isWhiteboardOpen: boolean
   toggleWhiteboard: () => void
 
-  // V3: Problem Panel State
+  // Problem Panel State
   isProblemOpen: boolean
   toggleProblem: () => void
   problemTitle: string
@@ -34,12 +45,19 @@ interface RoomState {
   problemTests: string
   setProblemData: (title: string, desc: string, tests: string) => void
 
-  // V4: Global Theme
-  theme: Theme
-  toggleTheme: () => void
+  // ── V2: Multi-file editor ─────────────────────────────────────────────────
+  files:       RoomFile[]          // sidebar list (no content)
+  openTabs:    OpenFile[]          // open editor tabs (with content)
+  activeFileId: string | null      // currently viewed tab
+  setFiles:     (files: RoomFile[]) => void
+  openFile:     (file: OpenFile)   => void
+  closeTab:     (id: string)       => void
+  setActiveFile:(id: string)       => void
+  updateTabContent: (id: string, content: string) => void
+  markTabSaved: (id: string)       => void
 }
 
-export const useRoomStore = create<RoomState>((set) => ({
+export const useRoomStore = create<RoomState>((set, get) => ({
   roomId: null,
   activeOverlayUserId: null,
   stagingBufferCode: null,
@@ -48,7 +66,7 @@ export const useRoomStore = create<RoomState>((set) => ({
   setOverlayUser: (id) => set({ activeOverlayUserId: id }),
   setStagingBuffer: (code) => set({ stagingBufferCode: code }),
   setParticipants: (participants) => set({ participants }),
-  
+
   broadcastSyncAction: null,
   setBroadcastSyncAction: (fn) => set({ broadcastSyncAction: fn }),
 
@@ -62,6 +80,41 @@ export const useRoomStore = create<RoomState>((set) => ({
   problemTests: "",
   setProblemData: (title, desc, tests) => set({ problemTitle: title, problemDesc: desc, problemTests: tests }),
 
-  theme: 'dark',
-  toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+  // ── V2: Multi-file editor ─────────────────────────────────────────────────
+  files:        [],
+  openTabs:     [],
+  activeFileId: null,
+
+  setFiles: (files) => set({ files }),
+
+  openFile: (file) => set((state) => {
+    const alreadyOpen = state.openTabs.find(t => t.id === file.id)
+    if (alreadyOpen) return { activeFileId: file.id }
+    return {
+      openTabs:     [...state.openTabs, file],
+      activeFileId: file.id,
+    }
+  }),
+
+  closeTab: (id) => set((state) => {
+    const remaining = state.openTabs.filter(t => t.id !== id)
+    const newActive = state.activeFileId === id
+      ? (remaining[remaining.length - 1]?.id ?? null)
+      : state.activeFileId
+    return { openTabs: remaining, activeFileId: newActive }
+  }),
+
+  setActiveFile: (id) => set({ activeFileId: id }),
+
+  updateTabContent: (id, content) => set((state) => ({
+    openTabs: state.openTabs.map(t =>
+      t.id === id ? { ...t, content, isDirty: true } : t
+    ),
+  })),
+
+  markTabSaved: (id) => set((state) => ({
+    openTabs: state.openTabs.map(t =>
+      t.id === id ? { ...t, isDirty: false } : t
+    ),
+  })),
 }))

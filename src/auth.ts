@@ -69,15 +69,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.sub as string;
+        session.user.id            = token.sub as string
+        // Forward the GitHub access token to the client session
+        if (token.githubAccessToken) {
+          (session.user as any).githubToken = token.githubAccessToken as string
+        }
       }
-      return session;
+      return session
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.sub = user.id;
+    async jwt({ token, user, account }) {
+      if (user)    token.sub = user.id
+      // Capture GitHub OAuth token on first sign-in
+      if (account?.provider === 'github' && account.access_token) {
+        token.githubAccessToken = account.access_token
       }
-      return token;
+      return token
     }
   },
   debug: process.env.NODE_ENV === "development",
